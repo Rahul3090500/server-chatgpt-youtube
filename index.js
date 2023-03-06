@@ -1,50 +1,53 @@
-import express from 'express'
-import cors from 'cors'
-import bodyParser from 'body-parser'
-import env from 'dotenv'
-import {Configuration, OpenAIApi} from 'openai'
+import express from "express";
+import cors from "cors";
+import bodyParser from "body-parser";
+import env from "dotenv";
+import { Configuration, OpenAIApi } from "openai";
 
-const app = express()
+const app = express();
+const port = process.env.PORT || 3080;
 
-env.config()
+env.config();
 
-app.use(cors())
-app.use(bodyParser.json())
+app.use(cors());
+app.use(bodyParser.json());
 
-
-// Configure open api
+// Configure OpenAI API
 const configuration = new Configuration({
-    organization: "PASTE YOUR ORGANIZATION ID HERE",
-    apiKey: process.env.API_KEY // VISIT .env AND MAKE CHANGES
-})
-const openai = new OpenAIApi(configuration)
+  organization: "org-Mt0wv7Q6kbJrEjyCPik97kgb",
+  apiKey: process.env.API_KEY,
+});
+const openai = new OpenAIApi(configuration);
 
-
-// listeninng
-app.listen("3080", ()=>console.log("listening on port 3080"))
-
-
-// dummy route to test
+// Routes
 app.get("/", (req, res) => {
-    res.send("Hello World!")
-})
+  res.send("Hello World!");
+});
 
+app.post("/", async (req, res, next) => {
+  try {
+    const { message, image } = req.body;
+    const response = await openai.createCompletion({
+      model: "text-davinci-003",
+      prompt: `${message}`,
+      max_tokens: 100,
+      temperature: 0.5,
+      image,
+    });
+    const { text } = response.data.choices[0];
+    res.json({ message: text });
+  } catch (error) {
+    next(error);
+  }
+});
 
-//post route for making requests
-app.post('/', async (req, res)=>{
-    const {message} = req.body
+// Error handling middleware
+app.use((error, req, res, next) => {
+  console.error(error);
+  res.status(500).json({ error: "Internal server error" });
+});
 
-    try{
-        const response = await openai.createCompletion({
-            model: "text-davinci-003",
-            prompt: `${message}`,
-            max_tokens: 100,
-            temperature: .5
-        })
-        res.json({message: response.data.choices[0].text})
-
-    }catch(e){
-        console.log(e)
-        res.send(e).status(400)
-    }
-})
+// Start the server
+app.listen(port, () => {
+  console.log(`Server listening on port ${port}`);
+});
